@@ -336,3 +336,17 @@ if __name__ == '__main__':
     
     print("🤖 신데렐라 세탁 점장 비서 봇 (마크다운 에러 원천 차단 및 파일 저장 버전) 실행 완료!")
     app.run_polling()
+    from flask import Flask
+import threading
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Cinderella Bot is running!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+t = threading.Thread(target=run_web)
+t.start()
