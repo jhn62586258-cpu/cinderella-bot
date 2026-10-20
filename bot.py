@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # ====================================================
-# 🔑 BOT TOKEN
+# 🔑 BOT TOKEN (Railway 환경 변수 우선 사용)
 # ====================================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8886513457:AAHcc2RaSWcHnCxGP1iha6Qg2TH9qZ4jlZA")
 
@@ -100,7 +100,6 @@ async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = message.caption
     media_group_id = message.media_group_id
 
-    # 세션 초기화
     if 'active_sessions' not in context.bot_data:
         context.bot_data['active_sessions'] = {}
     
@@ -115,7 +114,6 @@ async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if caption:
         session['customer'] = caption
 
-    # 단일 사진인 경우 바로 처리
     if not media_group_id:
         session['photo_count'] += 1
         total_photos = session['photo_count']
@@ -123,14 +121,13 @@ async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_batch_ui(chat_id, session, context)
         return
 
-    # 앨범(미디어 그룹)인 경우 1.2초 동안 모아서 하나로 처리
     media_groups[media_group_id].append(message)
 
     if media_group_id in media_group_tasks:
         media_group_tasks[media_group_id].cancel()
 
     async def delayed_process():
-        await asyncio.sleep(1.2)  # 앨범 사진이 모두 도착할 때까지 대기
+        await asyncio.sleep(1.2)
         msgs = media_groups.pop(media_group_id, [])
         media_group_tasks.pop(media_group_id, None)
         if msgs:
@@ -239,46 +236,4 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'customer': customer_name,
             'count': total_photos,
             'status': '접수완료',
-            'date': today.strftime('%m/%d')
-        }
-        save_orders(store_orders)
-
-        if chat_id in context.bot_data['active_sessions']:
-            del context.bot_data['active_sessions'][chat_id]
-
-        # 터치 한 번으로 복사되는 마크다운 코드블록(```) 및 신한 계좌 반영 완료
-        result_text = (
-            f"📋 [신데렐라 세탁 - 접수 완료 (주문번호 #{order_id})]\n\n"
-            f"🏠 고객(동호수): {customer_name}\n"
-            f"📅 접수일: {today.strftime('%Y-%m-%d')}\n"
-            f"📦 총 수량: {total_photos}벌\n"
-            f"🚚 배송 예정일: {delivery_date.strftime('%Y-%m-%d')} (4~5일 소요)\n\n"
-            f"-----------------------------------\n"
-            f"💬 [고객 전송용 안내 문구 (터치하여 복사하세요)]\n"
-            f"```\n"
-            f"[신데렐라 세탁 수거/검품 안내]\n"
-            f"고객님({customer_name})의 세탁물 총 {total_photos}벌 검품이 완료되었습니다.\n\n"
-            f"▪️ 세탁 내역:\n{items_formatted}\n\n"
-            f"▪️ 배송 예정일: {delivery_date.strftime('%m월 %d일')} 전후\n\n"
-            f"입금이 확인되면 즉시 맞춤 세탁 및 케어가 진행됩니다.\n"
-            f"입금 계좌: {BANK_ACCOUNT}\n"
-            f"```\n\n"
-            f"👇 아래 버튼을 눌러 공장으로 넘기세요!"
-        )
-        
-        try:
-            await query.message.delete()
-        except Exception:
-            pass
-
-        inline_kb = [
-            [InlineKeyboardButton(f"🏭 [주문 #{order_id}] 공장에 맡기기", callback_data=f'to_factory_{order_id}')]
-        ]
-        await context.bot.send_message(chat_id=chat_id, text=result_text, reply_markup=InlineKeyboardMarkup(inline_kb))
-
-    elif data.startswith('to_factory_'):
-        o_id = int(data.split('_')[2])
-        if o_id in store_orders:
-            store_orders[o_id]['status'] = '공장중'
-            save_orders(store_orders)
-            cust = store_orders[o_id]['customer']
+            'date': today.strftime
