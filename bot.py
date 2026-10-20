@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # ====================================================
-# 🔑 BOT TOKEN (Railway 환경 변수 우선 사용)
+# 🔑 BOT TOKEN
 # ====================================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8886513457:AAHcc2RaSWcHnCxGP1iha6Qg2TH9qZ4jlZA")
 
@@ -47,7 +47,6 @@ if store_orders:
 else:
     order_counter = 1
 
-# 미디어 그룹(앨범) 묶음 처리를 위한 저장소
 media_groups = defaultdict(list)
 media_group_tasks = {}
 
@@ -92,11 +91,14 @@ async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ 올바른 숫자를 입력해 주세요. 예시: /delete 1")
 
 # ====================================================
-# 📸 사진 수신 및 앨범(미디어 그룹) 통합 처리 로직
+# 📸 사진 수신 및 앨범(미디어 그룹) 통합 처리 로직 (그룹방 지원 강화)
 # ====================================================
 async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.photo:
+        return
+
     message = update.message
-    chat_id = message.effective_chat.id
+    chat_id = message.chat_id
     caption = message.caption
     media_group_id = message.media_group_id
 
@@ -114,6 +116,7 @@ async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if caption:
         session['customer'] = caption
 
+    # 단일 사진
     if not media_group_id:
         session['photo_count'] += 1
         total_photos = session['photo_count']
@@ -121,6 +124,7 @@ async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_batch_ui(chat_id, session, context)
         return
 
+    # 앨범(묶음 사진)
     media_groups[media_group_id].append(message)
 
     if media_group_id in media_group_tasks:
@@ -376,7 +380,9 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("menu", show_menu))
     app.add_handler(CommandHandler("delete", delete_order))
     app.add_handler(CallbackQueryHandler(button_click))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photos))
     
-    print("🤖 신데렐라 세탁 점장 비서 봇 정상 가동 시작!")
+    # 그룹방 포함 모든 사진 수신 가능하도록 필터 완전 보장
+    app.add_handler(MessageHandler(filters.PHOTO | filters.CAPTION, handle_photos))
+    
+    print("🤖 신데렐라 세탁 점장 비서 봇 실행 완료!")
     app.run_polling()
